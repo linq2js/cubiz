@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addHandlers = exports.createEmitterGroup = exports.createEmitter = exports.createResolver = exports.createDisposable = exports.createCancellable = exports.createDefer = exports.createContext = exports.createCubiz = void 0;
+exports.addHandlers = exports.createEmitterGroup = exports.createEmitter = exports.createRepository = exports.createDisposable = exports.createCancellable = exports.createDefer = exports.createContext = exports.createCubiz = void 0;
 const arrayKeyedMap_1 = require("./arrayKeyedMap");
 function noop() { }
 function createEmitter() {
@@ -88,10 +88,10 @@ function createCancellable(callback, parent) {
     };
 }
 exports.createCancellable = createCancellable;
-function createResolver() {
+function createRepository() {
     const dependencies = new Map();
     const emitters = createEmitterGroup(["change", "dispose", "loading", "call"]);
-    const resolver = {
+    const repo = {
         emit(event, payload) {
             emitters[event].emit(payload);
             return this;
@@ -122,13 +122,13 @@ function createResolver() {
             // is cubiz initFn
             if (typeof dependency === "function") {
                 /* eslint-disable @typescript-eslint/no-use-before-define */
-                resolved = createCubiz(dependency, { resolver: this, key });
-                resolver.add(dependency, resolved, key);
+                resolved = createCubiz(dependency, { repository: this, key });
+                repo.add(dependency, resolved, key);
             }
             else {
                 // is factory
                 resolved = dependency.create(this, key);
-                resolver.add(dependency, resolved, key);
+                repo.add(dependency, resolved, key);
             }
             return resolved;
         },
@@ -138,7 +138,7 @@ function createResolver() {
         },
         call(effects) {
             const e = Array.isArray(effects) ? effects : [effects];
-            resolver.each((value) => {
+            repo.each((value) => {
                 e.forEach((action) => {
                     value.call(action);
                 });
@@ -146,9 +146,9 @@ function createResolver() {
             return this;
         },
     };
-    return resolver;
+    return repo;
 }
-exports.createResolver = createResolver;
+exports.createRepository = createRepository;
 function createDefer(props) {
     let resolve, reject;
     const promise = Object.assign(new Promise((...args) => ([resolve, reject] = args)), props);
@@ -201,7 +201,7 @@ function createContext(cubiz, effect, allContexts, setState, getData) {
         emitters.cancel.emit();
     })), createDisposable(() => {
         emitters.dispose.emit();
-    })), { use: cubiz.resolver.get });
+    })), { use: cubiz.repository.get });
     return context;
 }
 exports.createContext = createContext;
@@ -240,7 +240,7 @@ function callEffect(context, effect, payload, onDone = noop, onCancel = noop) {
         throw e;
     }
 }
-function createCubiz(type, { key, resolver = createResolver() } = {}) {
+function createCubiz(type, { key, repository: repository = createRepository() } = {}) {
     const emitters = createEmitterGroup(["change", "dispose", "loading", "call"]);
     const allContexts = [];
     const effectData = new Map();
@@ -250,7 +250,7 @@ function createCubiz(type, { key, resolver = createResolver() } = {}) {
     function emitChange() {
         const e = { cubiz };
         emitters.change.emit(e);
-        resolver.emit("change", e);
+        repository.emit("change", e);
     }
     function emitDispose() {
         emitters.dispose.emit();
@@ -258,7 +258,7 @@ function createCubiz(type, { key, resolver = createResolver() } = {}) {
     function emitLoading() {
         const e = { cubiz };
         emitters.loading.emit(e);
-        resolver.emit("loading", e);
+        repository.emit("loading", e);
     }
     function emitCall(effect, payload) {
         // skip no name function
@@ -266,7 +266,7 @@ function createCubiz(type, { key, resolver = createResolver() } = {}) {
             return;
         const e = { cubiz, effect, payload };
         emitters.call.emit(e);
-        resolver.emit("call", e);
+        repository.emit("call", e);
     }
     function setState(next) {
         if (next === state)
@@ -295,8 +295,8 @@ function createCubiz(type, { key, resolver = createResolver() } = {}) {
         get key() {
             return key;
         },
-        get resolver() {
-            return resolver;
+        get repository() {
+            return repository;
         },
         get error() {
             return error;
@@ -329,7 +329,7 @@ function createCubiz(type, { key, resolver = createResolver() } = {}) {
             context.on({ cancel: onDone });
             return callEffect(context, effect, payload, onDone, context.cancel);
         } }, createDisposable(emitDispose));
-    // resolver events
+    // repository events
     cubiz.call(type);
     return cubiz;
 }

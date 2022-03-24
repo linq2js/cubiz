@@ -40,13 +40,6 @@ interface CubizEvents<TState = any> {
   loading?: Callback<CubizEventArgs<TState>>;
 }
 
-interface ResolverEvents {
-  change?: Callback<CubizEventArgs>;
-  loading?: Callback<CubizEventArgs>;
-  call?: Callback<CubizCallEventArgs>;
-  dispose?: Callback<CubizEventArgs>;
-}
-
 interface ContextEvents {
   dispose?: VoidCallback;
   cancel?: VoidCallback;
@@ -127,7 +120,7 @@ interface Context<TState = any> extends Cancellable, Disposable {
 
 interface CreateOptions {
   key?: any;
-  resolver?: Resolver;
+  repository?: Repository;
 }
 
 interface Cancellable {
@@ -143,7 +136,7 @@ interface Disposable {
 interface CancellablePromise<T> extends Promise<T>, Cancellable {}
 
 interface Factory<T = any> {
-  create(resolver: Resolver, key?: any): T;
+  create(repository: Repository, key?: any): T;
 }
 
 interface Cubiz<TState = any> extends Disposable {
@@ -160,9 +153,9 @@ interface Cubiz<TState = any> extends Disposable {
    */
   readonly state: TState;
   /**
-   * get the resolver that creates the cubiz
+   * get the repository that creates the cubiz
    */
-  readonly resolver: Resolver;
+  readonly repository: Repository;
   /**
    * get the key of cubiz, by default, the key is undefined
    */
@@ -187,7 +180,7 @@ interface Cubiz<TState = any> extends Disposable {
   ): InferEffectResult<TResult>;
 }
 
-interface Resolver {
+interface Repository {
   /**
    * add resolved value and using factory as key
    * @param dep
@@ -241,13 +234,13 @@ interface Resolver {
    * listen cubiz events
    * @param events
    */
-  on(events: ResolverEvents): VoidCallback;
+  on(events: CubizEvents): VoidCallback;
   /**
    * emit cubiz events
    * @param event
    * @param payload
    */
-  emit(event: keyof ResolverEvents, payload?: any): this;
+  emit(event: keyof CubizEvents, payload?: any): this;
 }
 
 function noop() {}
@@ -341,11 +334,11 @@ function createCancellable(
   };
 }
 
-function createResolver(): Resolver {
+function createRepository(): Repository {
   const dependencies = new Map<any, ArrayKeyedMap<any>>();
   const emitters = createEmitterGroup(["change", "dispose", "loading", "call"]);
 
-  const resolver: Resolver = {
+  const repo: Repository = {
     emit(event: keyof typeof emitters, payload?: any) {
       (emitters[event] as Emitter).emit(payload);
       return this;
@@ -375,12 +368,12 @@ function createResolver(): Resolver {
       // is cubiz initFn
       if (typeof dependency === "function") {
         /* eslint-disable @typescript-eslint/no-use-before-define */
-        resolved = createCubiz(dependency, { resolver: this, key });
-        resolver.add(dependency as CubizInit, resolved, key);
+        resolved = createCubiz(dependency, { repository: this, key });
+        repo.add(dependency as CubizInit, resolved, key);
       } else {
         // is factory
         resolved = dependency.create(this, key);
-        resolver.add(dependency, resolved, key);
+        repo.add(dependency, resolved, key);
       }
 
       return resolved;
@@ -393,7 +386,7 @@ function createResolver(): Resolver {
     },
     call(effects) {
       const e = Array.isArray(effects) ? effects : [effects];
-      resolver.each(
+      repo.each(
         (value) => {
           e.forEach((action) => {
             (value as Cubiz).call(action);
@@ -406,7 +399,7 @@ function createResolver(): Resolver {
     },
   };
 
-  return resolver;
+  return repo;
 }
 
 interface Defer<TResolved, TProps = {}> {
@@ -487,7 +480,7 @@ function createContext<TState>(
     ...createDisposable(() => {
       emitters.dispose.emit();
     }),
-    use: cubiz.resolver.get,
+    use: cubiz.repository.get,
   };
 
   return context;
@@ -538,7 +531,7 @@ function callEffect<TState, TPayload extends any[], TResult>(
 
 function createCubiz<TState>(
   type: CubizInit<TState>,
-  { key, resolver = createResolver() }: CreateOptions = {}
+  { key, repository: repository = createRepository() }: CreateOptions = {}
 ): Cubiz<TState> {
   const emitters = createEmitterGroup(["change", "dispose", "loading", "call"]);
   const allContexts: Context<TState>[] = [];
@@ -550,7 +543,7 @@ function createCubiz<TState>(
   function emitChange() {
     const e: CubizEventArgs = { cubiz };
     emitters.change.emit(e);
-    resolver.emit("change", e);
+    repository.emit("change", e);
   }
 
   function emitDispose() {
@@ -560,7 +553,7 @@ function createCubiz<TState>(
   function emitLoading() {
     const e: CubizEventArgs = { cubiz };
     emitters.loading.emit(e);
-    resolver.emit("loading", e);
+    repository.emit("loading", e);
   }
 
   function emitCall(effect: Effect, payload: any[]) {
@@ -568,7 +561,7 @@ function createCubiz<TState>(
     if (!effect.name) return;
     const e: CubizCallEventArgs = { cubiz, effect, payload };
     emitters.call.emit(e);
-    resolver.emit("call", e);
+    repository.emit("call", e);
   }
 
   function setState(next: TState) {
@@ -600,8 +593,8 @@ function createCubiz<TState>(
     get key() {
       return key;
     },
-    get resolver() {
-      return resolver;
+    get repository() {
+      return repository;
     },
     get error() {
       return error;
@@ -643,7 +636,7 @@ function createCubiz<TState>(
     ...createDisposable(emitDispose),
   };
 
-  // resolver events
+  // repository events
 
   cubiz.call(type);
 
@@ -660,7 +653,7 @@ export {
   Cubiz,
   CubizInit,
   Effect,
-  Resolver,
+  Repository,
   Emitter,
   CubizEventArgs,
   CubizCallEventArgs,
@@ -670,7 +663,7 @@ export {
   createDefer,
   createCancellable,
   createDisposable,
-  createResolver,
+  createRepository,
   createEmitter,
   createEmitterGroup,
   addHandlers,

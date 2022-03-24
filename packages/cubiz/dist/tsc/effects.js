@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.allSettled = exports.race = exports.all = exports.when = exports.throttle = exports.debounce = exports.delay = void 0;
+exports.sequential = exports.droppable = exports.allSettled = exports.race = exports.all = exports.when = exports.throttle = exports.debounce = exports.delay = void 0;
 const core_1 = require("./core");
 function processAsync(promises, type, parent) {
     const result = Array.isArray(promises) ? [] : {};
@@ -114,4 +114,28 @@ const when = ({ on, cubiz }, input) => {
     return defer.promise;
 };
 exports.when = when;
+const droppable = ({ effect, findContexts, cancel }) => {
+    const existing = findContexts((x) => x.effect === effect)[0];
+    const defer = (0, core_1.createDefer)();
+    if (existing) {
+        cancel();
+    }
+    else {
+        defer.resolve();
+    }
+    return defer.promise;
+};
+exports.droppable = droppable;
+const sequential = ({ effect, findContexts }) => {
+    const existing = findContexts((x) => x.effect === effect)[0];
+    const defer = (0, core_1.createDefer)();
+    if (existing) {
+        existing.on({ dispose: defer.resolve });
+    }
+    else {
+        defer.resolve();
+    }
+    return defer.promise;
+};
+exports.sequential = sequential;
 //# sourceMappingURL=effects.js.map

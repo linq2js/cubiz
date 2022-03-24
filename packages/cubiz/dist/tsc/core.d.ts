@@ -22,12 +22,6 @@ interface CubizEvents<TState = any> {
     dispose?: Callback<CubizEventArgs<TState>>;
     loading?: Callback<CubizEventArgs<TState>>;
 }
-interface ResolverEvents {
-    change?: Callback<CubizEventArgs>;
-    loading?: Callback<CubizEventArgs>;
-    call?: Callback<CubizCallEventArgs>;
-    dispose?: Callback<CubizEventArgs>;
-}
 interface ContextEvents {
     dispose?: VoidCallback;
     cancel?: VoidCallback;
@@ -98,7 +92,7 @@ interface Context<TState = any> extends Cancellable, Disposable {
 }
 interface CreateOptions {
     key?: any;
-    resolver?: Resolver;
+    repository?: Repository;
 }
 interface Cancellable {
     cancelled(): boolean;
@@ -111,7 +105,7 @@ interface Disposable {
 interface CancellablePromise<T> extends Promise<T>, Cancellable {
 }
 interface Factory<T = any> {
-    create(resolver: Resolver, key?: any): T;
+    create(repository: Repository, key?: any): T;
 }
 interface Cubiz<TState = any> extends Disposable {
     /**
@@ -127,9 +121,9 @@ interface Cubiz<TState = any> extends Disposable {
      */
     readonly state: TState;
     /**
-     * get the resolver that creates the cubiz
+     * get the repository that creates the cubiz
      */
-    readonly resolver: Resolver;
+    readonly repository: Repository;
     /**
      * get the key of cubiz, by default, the key is undefined
      */
@@ -150,7 +144,7 @@ interface Cubiz<TState = any> extends Disposable {
      */
     call<TPayload extends any[], TResult>(effect: Effect<TState, TPayload, TResult>, ...args: TPayload): InferEffectResult<TResult>;
 }
-interface Resolver {
+interface Repository {
     /**
      * add resolved value and using factory as key
      * @param dep
@@ -204,13 +198,13 @@ interface Resolver {
      * listen cubiz events
      * @param events
      */
-    on(events: ResolverEvents): VoidCallback;
+    on(events: CubizEvents): VoidCallback;
     /**
      * emit cubiz events
      * @param event
      * @param payload
      */
-    emit(event: keyof ResolverEvents, payload?: any): this;
+    emit(event: keyof CubizEvents, payload?: any): this;
 }
 declare function createEmitter(): Emitter;
 declare function createEmitterGroup<TKey extends string>(names: TKey[]): Record<TKey, Emitter> & {
@@ -223,7 +217,7 @@ declare function addHandlers<TEmitters extends {
 }>(emitters: TEmitters, events: TEvents): (event?: any) => void;
 declare function createDisposable(callback: Function): Disposable;
 declare function createCancellable(callback?: (obj: Cancellable) => void, parent?: Cancellable): Cancellable;
-declare function createResolver(): Resolver;
+declare function createRepository(): Repository;
 interface Defer<TResolved, TProps = {}> {
     promise: Promise<TResolved> & TProps;
     resolve(value?: TResolved): void;
@@ -231,5 +225,5 @@ interface Defer<TResolved, TProps = {}> {
 }
 declare function createDefer<T = void, TProps extends {} = {}>(props?: TProps): Defer<T, TProps>;
 declare function createContext<TState>(cubiz: Cubiz<TState>, effect: Effect, allContexts: Context<TState>[], setState: (next: TState) => void, getData: () => Record<string, any>): Context<TState>;
-declare function createCubiz<TState>(type: CubizInit<TState>, { key, resolver }?: CreateOptions): Cubiz<TState>;
-export { VoidCallback, Callback, Context, Cancellable, CancellablePromise, Cubiz, CubizInit, Effect, Resolver, Emitter, CubizEventArgs, CubizCallEventArgs, createCubiz, createContext, createDefer, createCancellable, createDisposable, createResolver, createEmitter, createEmitterGroup, addHandlers, };
+declare function createCubiz<TState>(type: CubizInit<TState>, { key, repository: repository }?: CreateOptions): Cubiz<TState>;
+export { VoidCallback, Callback, Context, Cancellable, CancellablePromise, Cubiz, CubizInit, Effect, Repository, Emitter, CubizEventArgs, CubizCallEventArgs, createCubiz, createContext, createDefer, createCancellable, createDisposable, createRepository, createEmitter, createEmitterGroup, addHandlers, };

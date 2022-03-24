@@ -1,31 +1,60 @@
 import * as React from "react";
-import { CubizInit, Cubiz, Resolver, createResolver } from "./core";
+import { CubizInit, Cubiz, Repository, createRepository } from "./core";
 
 interface ProviderProps {
-  resolver?: Resolver;
-  initDeps?: (resolver: Resolver) => void;
+  /**
+   * passing custom repository to Provider, if repository is not present, new once will be created
+   */
+  repository?: Repository;
+  /**
+   * this method will be called once when repository is binded to Provider first time
+   */
+  init?: (repository: Repository) => void;
 }
 
 interface UseCubizOptions {
   key?: any;
+  /**
+   * enable/disable cubiz tracking
+   * track.change = true: the component will re-render when state of the cubiz changed
+   * track.loading = true: the component will re-render when loading status of the cubiz changed
+   * track = false: no tracking enabled
+   */
   track?: boolean | { change?: boolean; loading?: boolean };
 }
 
 interface UseCubiz extends Function {
+  /**
+   * select a pie of cubiz's state, the component will be re-rendered only when selected value changed
+   * the hook returns a tuple of [selectedValue, cubizObject]
+   */
   <TState, TResult = TState>(
     initFn: CubizInit<TState>,
     selector: (state: TState) => TResult
   ): [TResult, Cubiz<TState>];
 
+  /**
+   * return cubiz object that matches the initFn. when the cubiz's state changed, the component will re-render as well
+   */
   <TState>(initFn: CubizInit<TState>, options?: UseCubizOptions): Cubiz<TState>;
 }
 
-const providerContext = React.createContext<Resolver | undefined>(undefined);
+const respositoryContext = React.createContext<Repository | null>(null);
 
-function useResolver() {
-  return React.useContext(providerContext)!;
+/**
+ * get current respository that provided by Provider component
+ * @returns
+ */
+function useRepository() {
+  return React.useContext(respositoryContext)!;
 }
 
+/**
+ * a React hook to bind cubiz to current component.
+ * when cubiz state is changed, the component will be rerendered
+ * @param args
+ * @returns
+ */
 const useCubiz: UseCubiz = (...args: any[]): any => {
   const initFn: CubizInit = args[0];
   const selector: Function | undefined =
@@ -40,9 +69,9 @@ const useCubiz: UseCubiz = (...args: any[]): any => {
       ? { loading: false, change: false }
       : track ?? {};
 
-  const resolver = useResolver();
+  const repository = useRepository();
   const rerender = React.useState<any>()[1];
-  const cubiz = resolver?.get(initFn, key);
+  const cubiz = repository?.get(initFn, key);
 
   React.useEffect(() => {
     if (!cubiz) return;
@@ -67,14 +96,14 @@ const useCubiz: UseCubiz = (...args: any[]): any => {
 };
 
 const Provider: React.FC<ProviderProps> = (props) => {
-  const initDepsRef = React.useRef(props.initDeps);
-  const resolver = React.useMemo(() => {
-    const result = props.resolver ?? createResolver();
-    initDepsRef.current?.call(null, result);
+  const initRef = React.useRef(props.init);
+  const repository = React.useMemo(() => {
+    const result = props.repository ?? createRepository();
+    initRef.current?.call(null, result);
     return result;
-  }, [props.resolver]);
-  return React.createElement(providerContext.Provider, {
-    value: resolver,
+  }, [props.repository]);
+  return React.createElement(respositoryContext.Provider, {
+    value: repository,
     children: props.children,
   });
 };
@@ -86,7 +115,7 @@ export {
   UseCubiz,
   // hooks
   useCubiz,
-  useResolver,
+  useRepository,
   // components
   Provider,
 };

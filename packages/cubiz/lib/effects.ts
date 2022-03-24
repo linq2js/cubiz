@@ -44,6 +44,14 @@ interface DelayEffect extends Function {
   (context: Context<any>, ms: number): CancellablePromise<void>;
 }
 
+interface DroppableEffect extends Function {
+  (context: Context<any>): Promise<void>;
+}
+
+interface SequentialEffect extends Function {
+  (context: Context<any>): Promise<void>;
+}
+
 interface AllEffect extends Function {
   <TAwaitable>(
     context: Context<any>,
@@ -211,4 +219,36 @@ const when: WhenEffect = ({ on, cubiz }, input) => {
   return defer.promise;
 };
 
-export { delay, debounce, throttle, when, all, race, allSettled };
+const droppable: DroppableEffect = ({ effect, findContexts, cancel }) => {
+  const existing = findContexts((x) => x.effect === effect)[0];
+  const defer = createDefer();
+  if (existing) {
+    cancel();
+  } else {
+    defer.resolve();
+  }
+  return defer.promise;
+};
+
+const sequential: SequentialEffect = ({ effect, findContexts }) => {
+  const existing = findContexts((x) => x.effect === effect)[0];
+  const defer = createDefer();
+  if (existing) {
+    existing.on({ dispose: defer.resolve });
+  } else {
+    defer.resolve();
+  }
+  return defer.promise;
+};
+
+export {
+  delay,
+  debounce,
+  throttle,
+  when,
+  all,
+  race,
+  allSettled,
+  droppable,
+  sequential,
+};

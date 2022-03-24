@@ -22,6 +22,12 @@ interface DebounceEffect extends Function {
 interface DelayEffect extends Function {
     (context: Context<any>, ms: number): CancellablePromise<void>;
 }
+interface DroppableEffect extends Function {
+    (context: Context<any>): Promise<void>;
+}
+interface SequentialEffect extends Function {
+    (context: Context<any>): Promise<void>;
+}
 interface AllEffect extends Function {
     <TAwaitable>(context: Context<any>, awaitables: TAwaitable): CancellablePromise<TAwaitable extends Array<infer TItem> ? InferAwaitable<TItem>[] : TAwaitable extends {} ? {
         [key in keyof TAwaitable]: InferAwaitable<TAwaitable[key]>;
@@ -44,4 +50,6 @@ declare const delay: DelayEffect;
 declare const debounce: DebounceEffect;
 declare const throttle: ThrottleEffect;
 declare const when: WhenEffect;
-export { delay, debounce, throttle, when, all, race, allSettled };
+declare const droppable: DroppableEffect;
+declare const sequential: SequentialEffect;
+export { delay, debounce, throttle, when, all, race, allSettled, droppable, sequential, };
