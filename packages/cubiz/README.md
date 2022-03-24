@@ -1,10 +1,26 @@
 # cubiz
 
+## Installation
+
+**npm**
+
+```bash
+npm i cubiz --save
+```
+
+**yarn**
+
+```bash
+yarn add cubiz
+```
+
 ## Features
 
 - Simple API
 - Easy to mainternant
 - Async cancellation supported
+
+## Concept
 
 ## Usages
 
@@ -19,7 +35,7 @@ const CounterCubiz = ({ state }) => {
   state(1);
 };
 
-// define cubiz effect, just increase state value by 1
+// define cubiz effect,the effect perform increasing state value by 1
 const increment = ({ state }) => {
   // get current state
   const count = state();
@@ -30,7 +46,8 @@ const increment = ({ state }) => {
 };
 
 const Counter = () => {
-  // get cubiz instance from the provider, the cubiz will be created by calling init function
+  // get cubiz instance from the provider,
+  // the cubiz will be created by calling init function
   const { state, call } = useCubiz(CounterCubiz);
 
   function handleClick() {
@@ -58,3 +75,13 @@ const App = () => {
 ```
 
 ### Advanced Usages
+
+## API References
+
+### useCubiz
+
+### Provider
+
+### Context<T>
+
+## Live examples
