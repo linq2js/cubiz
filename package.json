@@ -1,0 +1,19 @@
+{
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "devDependencies": {
+    "@types/jest": "^27.4.1",
+    "@types/react": "^17.0.42",
+    "eslint": "^8.11.0",
+    "jest": "^27.5.1",
+    "lerna": "^4.0.0",
+    "prettier": "^2.6.0",
+    "react": "^17.0.2",
+    "typescript": "^4.6.2"
+  },
+  "name": "cubiz",
+  "dependencies": {}
+}
