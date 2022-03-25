@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.3.1](https://github.com/linq2js/cubiz/compare/v0.3.0...v0.3.1) (2022-03-25)
+
+
+### Bug Fixes
+
+* unmounted ([15e18b5](https://github.com/linq2js/cubiz/commit/15e18b54f64c6a889021d428c97ecd09a2a5d00c))
+
+
+
+
+
 # [0.3.0](https://github.com/linq2js/cubiz/compare/v0.2.4...v0.3.0) (2022-03-25)
 
 
