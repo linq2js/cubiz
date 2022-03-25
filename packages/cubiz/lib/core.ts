@@ -30,13 +30,13 @@ interface CubizEventArgs<TState = any> {
   cubiz: Cubiz<TState>;
 }
 
-interface CubizChangeEventArgs<TState> extends CubizEventArgs<TState> {
+interface CubizChangeEventArgs<TState = any> extends CubizEventArgs<TState> {
   previous: TState;
   modifier: Effect;
 }
 
 interface CubizCallEventArgs<TState = any> extends CubizEventArgs<TState> {
-  effect: Function;
+  effect: Effect;
   payload: any[];
 }
 
@@ -510,7 +510,7 @@ interface Defer<TResolved, TProps = {}> {
   reject(reason?: any): void;
 }
 
-function createDefer<T = void, TProps extends {} = {}>(
+function createDefer<T = any, TProps extends {} = {}>(
   props?: TProps
 ): Defer<T, TProps> {
   let resolve: Function, reject: Function;
@@ -824,6 +824,7 @@ export {
   Emitter,
   CubizEventArgs,
   CubizCallEventArgs,
+  CubizChangeEventArgs,
   // methods
   createCubiz,
   createContext,

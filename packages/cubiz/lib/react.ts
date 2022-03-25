@@ -58,6 +58,7 @@ function useRepository() {
 const useCubiz: UseCubiz = (...args: any[]): any => {
   const initFn: CubizInit = args[0];
   const binder = React.useRef({}).current;
+  const unmountRef = React.useRef(false);
   const selector: Function | undefined =
     typeof args[1] === "function" ? args[1] : undefined;
   const options: UseCubizOptions | undefined =
@@ -79,6 +80,7 @@ const useCubiz: UseCubiz = (...args: any[]): any => {
     if (!trackChange && !trackLoading) return;
 
     function handleChange() {
+      if (unmountRef.current) return;
       rerender({});
     }
 
@@ -89,9 +91,14 @@ const useCubiz: UseCubiz = (...args: any[]): any => {
   }, [trackChange, trackLoading, rerender, cubiz]);
 
   React.useEffect(() => {
+    if (unmountRef.current) return;
     cubiz.bind(binder);
     return () => cubiz.unbind(binder);
   }, [binder, cubiz]);
+
+  React.useEffect(() => () => {
+    unmountRef.current = true;
+  });
 
   // return a typle that contains slice of state and cubiz
   if (selector) {

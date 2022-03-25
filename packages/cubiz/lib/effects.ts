@@ -8,16 +8,12 @@ import {
   Cancellable,
   createEmitter,
   Cubiz,
+  CubizChangeEventArgs,
 } from "./core";
 
 type InferAwaitable<TAwaitable> = TAwaitable extends Promise<infer TResolved>
   ? TResolved
   : TAwaitable;
-
-interface EffectInfo {
-  type: Function;
-  payload: any[];
-}
 
 interface PromiseResult<T = any> {
   value: T;
@@ -25,23 +21,46 @@ interface PromiseResult<T = any> {
   reason: any;
 }
 
-interface WhenEffect extends Function {
-  (
-    context: Context<any>,
-    predicate: (effect: EffectInfo) => boolean
-  ): CancellablePromise<EffectInfo>;
-  (context: Context<any>, effects: Effect[]): CancellablePromise<EffectInfo>;
+type InferWatchResult<TTarget> = {
+  [key in keyof TTarget]: TTarget[key] extends Cubiz<infer TState>
+    ? TState
+    : never;
+};
 
+interface WatchEffect extends Function {
+  <TTarget extends Record<string, Cubiz>>(
+    context: Context<any>,
+    targets: TTarget
+  ): CancellablePromise<InferWatchResult<TTarget>>;
+
+  <TTarget>(
+    context: Context<any>,
+    targets: TTarget,
+    callback: (
+      result: InferWatchResult<TTarget>,
+      cancellable: Cancellable
+    ) => void
+  ): CancellablePromise<void>;
+}
+
+interface WhenEffect extends Function {
+  /**
+   * listen specified effect calls and return a promise. the promise will resolve after first effect call
+   */
   (
     context: Context<any>,
-    cubiz: Cubiz,
-    predicate: (effect: EffectInfo) => boolean
-  ): CancellablePromise<EffectInfo>;
+    effects: Effect[],
+    cubiz?: Cubiz
+  ): CancellablePromise<CubizCallEventArgs>;
+
+  /**
+   * register effect call listener
+   */
   (
     context: Context<any>,
-    cubiz: Cubiz,
-    effects: Effect[]
-  ): CancellablePromise<EffectInfo>;
+    listener: (e: CubizCallEventArgs, cancellable: Cancellable) => void,
+    cubiz?: Cubiz
+  ): CancellablePromise<void>;
 }
 
 interface ThrottleEffect extends Function {
@@ -209,26 +228,60 @@ const throttle: ThrottleEffect = ({ data, cancel }, ms) => {
   return defer.promise;
 };
 
-function createWhenPredicate(effects: Function[]) {
-  return (e: EffectInfo) => effects.indexOf(e.type) !== -1;
-}
-
-const when: WhenEffect = ({ on, cubiz }, ...args: any[]) => {
-  const target: Cubiz = args.length > 1 ? args[0] : cubiz;
-  const input = args.length > 1 ? args[1] : args[0];
+const when: WhenEffect = ({ on, cubiz }, callbackOrEffects, target?): any => {
   const onCleanup = createEmitter();
   const cancellable = createCancellable(onCleanup.emit);
-  const defer = createDefer<EffectInfo, Cancellable>(cancellable);
-  const predicate =
-    typeof input === "function" ? input : createWhenPredicate(input);
+  const defer = createDefer(cancellable);
+  const effects = callbackOrEffects as Effect[];
+  const cb =
+    typeof callbackOrEffects === "function"
+      ? callbackOrEffects
+      : (e: CubizCallEventArgs) => {
+          if (!effects.includes(e.effect)) return;
+          defer.resolve(e);
+          cancellable.cancel();
+        };
   const listener = (e: CubizCallEventArgs) => {
-    const info: EffectInfo = { type: e.effect, payload: e.payload };
-    if (!predicate(info)) return;
-    cancellable.cancel();
-    defer.resolve(info);
+    cb(e, cancellable);
   };
+  if (!target) target = cubiz;
   onCleanup.add(target.on({ call: listener }));
   onCleanup.add(on({ dispose: cancellable.cancel }));
+
+  return defer.promise;
+};
+
+const watch: WatchEffect = (
+  { on }: Context,
+  target: any,
+  callback?: any
+): any => {
+  const onCleanup = createEmitter();
+  const cancellable = createCancellable(onCleanup.emit);
+  const defer = createDefer(cancellable);
+  const getResult = () => {
+    const result: Record<string, any> = {};
+    Object.keys(target).forEach((key) => {
+      result[key] = target[key].state;
+    });
+    return result;
+  };
+  const cb =
+    callback ??
+    ((_: any, cancellable: Cancellable) => {
+      defer.resolve(getResult());
+      cancellable.cancel();
+    });
+  const listener = (e: CubizChangeEventArgs) => {
+    if (cancellable.cancelled()) return;
+    cb(e, cancellable);
+  };
+
+  Object.keys(target).forEach((key) => {
+    target[key].on({ change: listener });
+  });
+
+  on({ dispose: cancellable.cancel });
 
   return defer.promise;
 };
@@ -260,6 +313,7 @@ export {
   debounce,
   throttle,
   when,
+  watch,
   all,
   race,
   allSettled,
