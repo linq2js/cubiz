@@ -5,7 +5,7 @@
     "examples/*"
   ],
   "scripts": {
-    "publish-all": "npx lerna publish --conventional-commits"
+    "publish-all": "npx lerna run test && npx lerna publish --conventional-commits"
   },
   "devDependencies": {
     "@types/jest": "^27.4.1",
