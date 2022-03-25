@@ -26,6 +26,7 @@
     "clean": "rm -rf dist build package",
     "ts-node": "ts-node",
     "docs": "typedoc --entryPoints lib/main.ts --out ../../docs",
+    "preview-docs": "npx serve ../../docs",
     "build": "tsc -p tsconfig.json",
     "build-all": "yarn clean && yarn build && yarn esbuild-node && yarn esbuild-browser && yarn esbuild-web",
     "esbuild-web": "esbuild lib/main.ts --bundle --platform=node --minify --sourcemap=external --outfile=dist/esbuild/web.js",

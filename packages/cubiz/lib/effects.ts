@@ -21,25 +21,16 @@ interface PromiseResult<T = any> {
   reason: any;
 }
 
-type InferWatchResult<TTarget> = {
-  [key in keyof TTarget]: TTarget[key] extends Cubiz<infer TState>
-    ? TState
-    : never;
-};
-
 interface WatchEffect extends Function {
-  <TTarget extends Record<string, Cubiz>>(
+  (
     context: Context<any>,
-    targets: TTarget
-  ): CancellablePromise<InferWatchResult<TTarget>>;
+    targets: Cubiz | Cubiz[]
+  ): CancellablePromise<CubizChangeEventArgs>;
 
-  <TTarget>(
+  (
     context: Context<any>,
-    targets: TTarget,
-    callback: (
-      result: InferWatchResult<TTarget>,
-      cancellable: Cancellable
-    ) => void
+    targets: Cubiz | Cubiz[],
+    callback: (e: CubizChangeEventArgs, cancellable: Cancellable) => void
   ): CancellablePromise<void>;
 }
 
@@ -253,23 +244,17 @@ const when: WhenEffect = ({ on, cubiz }, callbackOrEffects, target?): any => {
 
 const watch: WatchEffect = (
   { on }: Context,
-  target: any,
-  callback?: any
+  targets,
+  callback?: Function
 ): any => {
+  if (!Array.isArray(targets)) targets = [targets];
   const onCleanup = createEmitter();
   const cancellable = createCancellable(onCleanup.emit);
   const defer = createDefer(cancellable);
-  const getResult = () => {
-    const result: Record<string, any> = {};
-    Object.keys(target).forEach((key) => {
-      result[key] = target[key].state;
-    });
-    return result;
-  };
   const cb =
     callback ??
-    ((_: any, cancellable: Cancellable) => {
-      defer.resolve(getResult());
+    ((e: any, cancellable: Cancellable) => {
+      defer.resolve(e);
       cancellable.cancel();
     });
   const listener = (e: CubizChangeEventArgs) => {
@@ -277,8 +262,8 @@ const watch: WatchEffect = (
     cb(e, cancellable);
   };
 
-  Object.keys(target).forEach((key) => {
-    target[key].on({ change: listener });
+  targets.forEach((target) => {
+    onCleanup.add(target.on({ change: listener }));
   });
 
   on({ dispose: cancellable.cancel });
@@ -309,6 +294,18 @@ const sequential: SequentialEffect = ({ effect, findContexts }) => {
 };
 
 export {
+  // types
+  DelayEffect,
+  DebounceEffect,
+  ThrottleEffect,
+  WhenEffect,
+  WatchEffect,
+  AllEffect,
+  RaceEffect,
+  AllSettledEffect,
+  DroppableEffect,
+  SequentialEffect,
+  // methods
   delay,
   debounce,
   throttle,
