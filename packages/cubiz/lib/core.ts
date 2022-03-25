@@ -763,7 +763,7 @@ function createCubiz<TState>(
       return callEffect(context, effect, payload, onDone, context.cancel);
     },
     bind(binder: any) {
-      if (key === null || typeof key === "undefined") {
+      if (binder === null || typeof binder === "undefined") {
         throw new Error("Invalid binding key");
       }
       clearTimeout(autoDisposeTimer);
