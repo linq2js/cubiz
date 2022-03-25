@@ -121,6 +121,10 @@ interface Context<TState = any> extends Cancellable, Disposable {
     effect: Effect<TState, TPayload, TResult>,
     ...args: TPayload
   ): InferEffectResult<TResult>;
+  fork<TPayload extends any[], TResult>(
+    effect: Effect<TState, TPayload, TResult>,
+    ...args: TPayload
+  ): InferEffectResult<TResult>;
   /**
    * resolve an object from specified factory
    * @param factory
@@ -213,6 +217,10 @@ interface Cubiz<TState = any> extends Disposable {
    * @param args
    */
   call<TPayload extends any[], TResult>(
+    effect: Effect<TState, TPayload, TResult>,
+    ...args: TPayload
+  ): InferEffectResult<TResult>;
+  spawn<TPayload extends any[], TResult>(
     effect: Effect<TState, TPayload, TResult>,
     ...args: TPayload
   ): InferEffectResult<TResult>;
@@ -569,8 +577,11 @@ function createContext<TState>(
     call(effect, ...payload) {
       return callEffect(context, effect, payload);
     },
-    spawn(effect, ...payload) {
+    fork(effect, ...payload) {
       return cubiz.call(effect, ...payload);
+    },
+    spawn(effect, ...payload) {
+      return cubiz.spawn(effect, ...payload);
     },
     ...cancellable,
     ...createDisposable(() => {
@@ -707,6 +718,52 @@ function createCubiz<TState>(
     return result;
   }
 
+  function internalCall<TResult, TPayload extends any[]>(
+    mode: "call" | "spawn",
+    effect: Effect<TState, TPayload, TResult>,
+    payload: TPayload
+  ): InferEffectResult<TResult> {
+    if (effect === type) {
+      if (initialized) {
+        throw new Error("initFn cannot call twice for same cubiz");
+      }
+      initialized = true;
+    }
+    const context: Context<TState> = createContext(
+      cubiz,
+      effect as any,
+      allContexts,
+      configure,
+      setState,
+      () => getData(effect)
+    );
+    emitCall(effect as any, payload);
+    if (mode === "spawn") {
+      // the cubiz will not track loading status of spawned effect
+    } else {
+      // the top is the latest
+      allContexts.unshift(context);
+      uploadLoadingStatus();
+    }
+
+    function onDone(e?: any) {
+      if (e) error = e;
+
+      if (mode !== "spawn") {
+        // remove the context
+        const index = allContexts.indexOf(context);
+        if (index !== -1) allContexts.splice(index, 1);
+        uploadLoadingStatus();
+      }
+
+      context.dispose();
+    }
+
+    context.on({ cancel: onDone });
+
+    return callEffect(context, effect, payload, onDone, context.cancel);
+  }
+
   const cubiz: Cubiz<TState> = {
     get params() {
       return params;
@@ -745,36 +802,10 @@ function createCubiz<TState>(
       return addHandlers(emitters, events);
     },
     call(effect, ...payload) {
-      if (effect === type) {
-        if (initialized) {
-          throw new Error("initFn cannot call twice for same cubiz");
-        }
-        initialized = true;
-      }
-      const context: Context<TState> = createContext(
-        cubiz,
-        effect as any,
-        allContexts,
-        configure,
-        setState,
-        () => getData(effect)
-      );
-      emitCall(effect as any, payload);
-      // the top is the latest
-      allContexts.unshift(context);
-      uploadLoadingStatus();
-      function onDone(e?: any) {
-        if (e) error = e;
-        // remove the context
-        const index = allContexts.indexOf(context);
-        if (index !== -1) allContexts.splice(index, 1);
-        context.dispose();
-        uploadLoadingStatus();
-      }
-
-      context.on({ cancel: onDone });
-
-      return callEffect(context, effect, payload, onDone, context.cancel);
+      return internalCall("call", effect, payload);
+    },
+    spawn(effect, ...payload) {
+      return internalCall("spawn", effect, payload);
     },
     bind(binder: any) {
       if (binder === null || typeof binder === "undefined") {
