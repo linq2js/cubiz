@@ -80,7 +80,7 @@ interface Context<TState = any> extends Cancellable, Disposable {
    * The reducer retrieves previous state and returns a new one
    * @param reducer
    */
-  state(reducer: (prev: TState) => TState): void;
+  state(...reducers: ((prev: TState) => TState)[]): void;
   /**
    * listen context events
    * @param events
@@ -112,7 +112,7 @@ interface Context<TState = any> extends Cancellable, Disposable {
   use<T>(factory: Factory<T>, key?: any): T;
   /**
    * resolve an cubiz from specified type
-   * @param cubizType
+   * @param type
    * @param key
    */
   use<T>(type: CubizInit<T>, key?: any): Cubiz<T>;
@@ -455,15 +455,22 @@ function createContext<TState>(
         (x) => x !== context && (!predicate || predicate(x))
       );
     },
-    state(value?): any {
-      if (typeof value === "function") {
-        setState((value as any)(cubiz.state));
-        return;
-      }
-      if (!arguments.length) {
+    state(...args: any[]): any {
+      // getter
+      if (!args.length) {
         return cubiz.state;
       }
-      setState(value as TState);
+
+      if (context.cancelled()) return;
+
+      // reducer
+      if (typeof args[0] === "function") {
+        setState(args.reduce((x, reducer) => reducer(x), cubiz.state));
+        return;
+      }
+
+      // setter
+      setState(args[0] as TState);
     },
     on(events) {
       return addHandlers(emitters, events);

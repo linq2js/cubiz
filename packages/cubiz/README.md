@@ -14,17 +14,23 @@ npm i cubiz --save
 yarn add cubiz
 ```
 
+---
+
 ## Features
 
 - Simple API
 - Easy to mainternant
 - Async cancellation supported
 
+---
+
 ## Concepts
 
 - **The Cubiz** is where to store the data of the application. One cubiz contains one kind of data and handle all business logic that relates to that data.
 - **The effect** is where to describes how we can interact with the cubiz. When a effect called, if the effect contains async code, the cubiz loading status becomes true. After the effect is done, if no more running effect, the cubiz loading status becomes false, no matter the effect is sucess or fail.
 - **The Provider** is where to handle cubiz repository, the repository stores all cubiz instances. When cubiz uses another cubiz instance, it calls the repository for resolving that
+
+---
 
 ## Usages
 
@@ -80,34 +86,50 @@ const App = () => {
 
 ### Advanced Usages
 
+---
+
 ## API References
 
-### Hook: useCubiz()
+### Hooks
+
+#### useCubiz()
 
 A React hook to bind cubiz to the current component. When the cubiz state is changed, the component will be rerendered.
 useCubiz() retrieves cubiz will use cubiz 's init function as a key to look up all cubiz instances in the Provider's repository.
 If not cubiz found, the Provider will create a new cubiz and apply the init function on that cubiz
 
-### Component: \<Provider/>
+---
+
+### Components
+
+#### Provider
 
 The \<Provider> component makes the object repository available to any nested components that need to access the object repository.
 
-### Method: createRepository()
+### Methods
 
-### Effect: delay()
+#### createRepository()
 
-### Effect: debounce()
+### Effects
 
-### Effect: throttle()
+#### delay()
 
-### Effect: sequential()
+#### debounce()
 
-### Effect: droppable()
+#### throttle()
 
-### Effect: race()
+#### sequential()
 
-### Effect: all()
+#### droppable()
 
-### Context<T>
+#### race()
+
+#### all()
+
+### Mutations
+
+### Types
+
+#### Context\<T>
 
 ## Live examples
