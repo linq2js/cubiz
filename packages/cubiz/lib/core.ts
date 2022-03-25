@@ -51,7 +51,7 @@ interface StateAccessor<TState> {
    * The reducer retrieves previous state and returns a new one
    * @param reducer
    */
-  (reducer: ((prev: TState) => TState)[]): void;
+  (reducer: (prev: TState) => TState): void;
   /**
    * get current state
    */

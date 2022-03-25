@@ -18,7 +18,7 @@
     "lib"
   ],
   "scripts": {
-    "prepublishOnly": "yarn && yarn build",
+    "prepublishOnly": "yarn test && yarn && yarn build",
     "cli": "ts-node lib/cli.ts",
     "lint": "eslint lib/ --ext .js,.jsx,.ts,.tsx",
     "test": "jest",
