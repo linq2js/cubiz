@@ -96,9 +96,12 @@ const useCubiz: UseCubiz = (...args: any[]): any => {
     return () => cubiz.unbind(binder);
   }, [binder, cubiz]);
 
-  React.useEffect(() => () => {
-    unmountRef.current = true;
-  });
+  React.useEffect(
+    () => () => {
+      unmountRef.current = true;
+    },
+    []
+  );
 
   // return a typle that contains slice of state and cubiz
   if (selector) {
