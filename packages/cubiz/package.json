@@ -25,7 +25,7 @@
     "test:simple_classes": "npm run clean && yarn cli ./test/simple_classes.yaml dart ./output/simple_classes.dart",
     "clean": "rm -rf dist build package",
     "ts-node": "ts-node",
-    "docs": "typedoc --entryPoints lib/main.ts",
+    "docs": "typedoc --entryPoints lib/main.ts --out ../../docs",
     "build": "tsc -p tsconfig.json",
     "build-all": "yarn clean && yarn build && yarn esbuild-node && yarn esbuild-browser",
     "esbuild-browser": "esbuild lib/browser.ts --bundle --minify --sourcemap=external --outfile=dist/esbuild/browser.js",

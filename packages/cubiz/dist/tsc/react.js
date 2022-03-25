@@ -66,4 +66,4 @@ const Provider = (props) => {
     });
 };
 exports.Provider = Provider;
-//# sourceMappingURL=binding.js.map
+//# sourceMappingURL=react.js.map

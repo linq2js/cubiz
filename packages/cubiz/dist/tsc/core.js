@@ -179,15 +179,20 @@ function createContext(cubiz, effect, allContexts, setState, getData) {
         findContexts(predicate) {
             return allContexts.filter((x) => x !== context && (!predicate || predicate(x)));
         },
-        state(value) {
-            if (typeof value === "function") {
-                setState(value(cubiz.state));
-                return;
-            }
-            if (!arguments.length) {
+        state(...args) {
+            // getter
+            if (!args.length) {
                 return cubiz.state;
             }
-            setState(value);
+            if (context.cancelled())
+                return;
+            // reducer
+            if (typeof args[0] === "function") {
+                setState(args.reduce((x, reducer) => reducer(x), cubiz.state));
+                return;
+            }
+            // setter
+            setState(args[0]);
         },
         on(events) {
             return addHandlers(emitters, events);

@@ -59,7 +59,7 @@ interface Context<TState = any> extends Cancellable, Disposable {
      * The reducer retrieves previous state and returns a new one
      * @param reducer
      */
-    state(reducer: (prev: TState) => TState): void;
+    state(...reducers: ((prev: TState) => TState)[]): void;
     /**
      * listen context events
      * @param events
@@ -85,7 +85,7 @@ interface Context<TState = any> extends Cancellable, Disposable {
     use<T>(factory: Factory<T>, key?: any): T;
     /**
      * resolve an cubiz from specified type
-     * @param cubizType
+     * @param type
      * @param key
      */
     use<T>(type: CubizInit<T>, key?: any): Cubiz<T>;
