@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.2.0](https://github.com/linq2js/cubiz/compare/v0.1.2...v0.2.0) (2022-03-25)
+
+
+### Features
+
+* autoDispose ([82fe927](https://github.com/linq2js/cubiz/commit/82fe927d9d67125fa04a6e974e4afec09380de39))
+
+
+
+
+
 ## [0.1.2](https://github.com/linq2js/cubiz/compare/v0.1.1...v0.1.2) (2022-03-25)
 
 **Note:** Version bump only for package cubiz
