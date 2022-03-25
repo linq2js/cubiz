@@ -90,46 +90,6 @@ const App = () => {
 
 ## API References
 
-### Hooks
-
-#### useCubiz()
-
-A React hook to bind cubiz to the current component. When the cubiz state is changed, the component will be rerendered.
-useCubiz() retrieves cubiz will use cubiz 's init function as a key to look up all cubiz instances in the Provider's repository.
-If not cubiz found, the Provider will create a new cubiz and apply the init function on that cubiz
-
----
-
-### Components
-
-#### Provider
-
-The \<Provider> component makes the object repository available to any nested components that need to access the object repository.
-
-### Methods
-
-#### createRepository()
-
-### Effects
-
-#### delay()
-
-#### debounce()
-
-#### throttle()
-
-#### sequential()
-
-#### droppable()
-
-#### race()
-
-#### all()
-
-### Mutations
-
-### Types
-
-#### Context\<T>
+Please refer this link for futher information https://linq2js.github.io/cubiz/
 
 ## Live examples
