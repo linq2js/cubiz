@@ -198,6 +198,10 @@ interface Cubiz<TState = any> extends Disposable {
    * get the cubiz type, it is init function
    */
   readonly type: Function;
+  on(
+    effects: Effect | Effect[],
+    callback: (e: CubizCallEventArgs) => void
+  ): VoidCallback;
   /**
    * listen cubiz events (loading, change, dipose, call)
    * @param events
@@ -213,6 +217,7 @@ interface Cubiz<TState = any> extends Disposable {
     ...args: TPayload
   ): InferEffectResult<TResult>;
   bind(binder: any): void;
+
   unbind(binder: any): void;
 }
 
@@ -727,7 +732,16 @@ function createCubiz<TState>(
     get state() {
       return state;
     },
-    on(events) {
+    on(events, callback?: (e: CubizCallEventArgs) => void) {
+      if (cubiz.disposed()) return noop;
+      if (Array.isArray(events) || typeof events === "function") {
+        const ea = Array.isArray(events) ? events : [events as Function];
+        return emitters.call.add((e: CubizCallEventArgs) => {
+          if (ea.includes(e.effect)) {
+            callback?.call(null, e);
+          }
+        });
+      }
       return addHandlers(emitters, events);
     },
     call(effect, ...payload) {
@@ -777,6 +791,8 @@ function createCubiz<TState>(
       }
     },
     ...createDisposable(() => {
+      // cancel all contexts
+      allContexts.forEach((context) => context.cancel());
       repository.remove(type, key);
       emitDispose();
     }),

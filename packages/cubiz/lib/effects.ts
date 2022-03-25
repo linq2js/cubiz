@@ -7,6 +7,7 @@ import {
   CubizCallEventArgs,
   Cancellable,
   createEmitter,
+  Cubiz,
 } from "./core";
 
 type InferAwaitable<TAwaitable> = TAwaitable extends Promise<infer TResolved>
@@ -30,6 +31,17 @@ interface WhenEffect extends Function {
     predicate: (effect: EffectInfo) => boolean
   ): CancellablePromise<EffectInfo>;
   (context: Context<any>, effects: Effect[]): CancellablePromise<EffectInfo>;
+
+  (
+    context: Context<any>,
+    cubiz: Cubiz,
+    predicate: (effect: EffectInfo) => boolean
+  ): CancellablePromise<EffectInfo>;
+  (
+    context: Context<any>,
+    cubiz: Cubiz,
+    effects: Effect[]
+  ): CancellablePromise<EffectInfo>;
 }
 
 interface ThrottleEffect extends Function {
@@ -201,7 +213,9 @@ function createWhenPredicate(effects: Function[]) {
   return (e: EffectInfo) => effects.indexOf(e.type) !== -1;
 }
 
-const when: WhenEffect = ({ on, cubiz }, input) => {
+const when: WhenEffect = ({ on, cubiz }, ...args: any[]) => {
+  const target: Cubiz = args.length > 1 ? args[0] : cubiz;
+  const input = args.length > 1 ? args[1] : args[0];
   const onCleanup = createEmitter();
   const cancellable = createCancellable(onCleanup.emit);
   const defer = createDefer<EffectInfo, Cancellable>(cancellable);
@@ -213,7 +227,7 @@ const when: WhenEffect = ({ on, cubiz }, input) => {
     cancellable.cancel();
     defer.resolve(info);
   };
-  onCleanup.add(cubiz.on({ call: listener }));
+  onCleanup.add(target.on({ call: listener }));
   onCleanup.add(on({ dispose: cancellable.cancel }));
 
   return defer.promise;
