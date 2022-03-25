@@ -45,6 +45,24 @@ interface ContextEvents {
   cancel?: VoidCallback;
 }
 
+interface StateAccessor<TState> {
+  /**
+   * Update state by using reducer.
+   * The reducer retrieves previous state and returns a new one
+   * @param reducer
+   */
+  (reducer: ((prev: TState) => TState)[]): void;
+  /**
+   * get current state
+   */
+  (): TState;
+  /**
+   * update state with new value
+   * @param value
+   */
+  (value: TState): void;
+}
+
 interface Context<TState = any> extends Cancellable, Disposable {
   /**
    * Get effect info
@@ -66,21 +84,7 @@ interface Context<TState = any> extends Cancellable, Disposable {
   findContexts(
     predicate?: (context: Context<TState>) => boolean
   ): Context<TState>[];
-  /**
-   * get current state
-   */
-  state(): TState;
-  /**
-   * update state with new value
-   * @param value
-   */
-  state(value: TState): void;
-  /**
-   * Update state by using reducer.
-   * The reducer retrieves previous state and returns a new one
-   * @param reducer
-   */
-  state(...reducers: ((prev: TState) => TState)[]): void;
+  state: StateAccessor<TState>;
   /**
    * listen context events
    * @param events
@@ -160,6 +164,10 @@ interface Cubiz<TState = any> extends Disposable {
    * get the key of cubiz, by default, the key is undefined
    */
   readonly key: any;
+  /**
+   * a shared data for effect level use
+   */
+  readonly data: Record<string, any>;
   /**
    * get the cubiz type, it is init function
    */
@@ -455,22 +463,23 @@ function createContext<TState>(
         (x) => x !== context && (!predicate || predicate(x))
       );
     },
-    state(...args: any[]): any {
+    state(arg?: any): any {
       // getter
-      if (!args.length) {
+      if (!arguments.length) {
         return cubiz.state;
       }
 
+      // do nothing if context is cancelled
       if (context.cancelled()) return;
 
       // reducer
-      if (typeof args[0] === "function") {
-        setState(args.reduce((x, reducer) => reducer(x), cubiz.state));
+      if (typeof arg === "function") {
+        setState(arg(cubiz.state));
         return;
       }
 
       // setter
-      setState(args[0] as TState);
+      setState(arg);
     },
     on(events) {
       return addHandlers(emitters, events);
@@ -543,6 +552,7 @@ function createCubiz<TState>(
   const emitters = createEmitterGroup(["change", "dispose", "loading", "call"]);
   const allContexts: Context<TState>[] = [];
   const effectData = new Map<Effect, Record<string, any>>();
+  const data: Record<string, any> = {};
   let state: TState;
   let error: any;
   let loading = false;
@@ -594,6 +604,9 @@ function createCubiz<TState>(
   }
 
   const cubiz: Cubiz<TState> = {
+    get data() {
+      return data;
+    },
     get type() {
       return type;
     },
