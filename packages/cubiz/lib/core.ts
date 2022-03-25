@@ -13,6 +13,8 @@ type InferEffectResult<TResult> = TResult extends Promise<infer TResolved>
   ? CancellablePromise<TResolved>
   : TResult;
 
+type SetState<TState> = (state: TState, modifier: Effect) => void;
+
 interface Emitter {
   // add handler
   add(handler: Function): VoidCallback;
@@ -28,13 +30,18 @@ interface CubizEventArgs<TState = any> {
   cubiz: Cubiz<TState>;
 }
 
+interface CubizChangeEventArgs<TState> extends CubizEventArgs<TState> {
+  previous: TState;
+  modifier: Effect;
+}
+
 interface CubizCallEventArgs<TState = any> extends CubizEventArgs<TState> {
   effect: Function;
   payload: any[];
 }
 
 interface CubizEvents<TState = any> {
-  change?: Callback<TState>;
+  change?: Callback<CubizChangeEventArgs<TState>>;
   call?: Callback<CubizCallEventArgs<TState>>;
   dispose?: Callback<CubizEventArgs<TState>>;
   loading?: Callback<CubizEventArgs<TState>>;
@@ -61,6 +68,8 @@ interface StateAccessor<TState> {
    * @param value
    */
   (value: TState): void;
+  value: TState;
+  readonly modifier: Effect;
 }
 
 interface Context<TState = any> extends Cancellable, Disposable {
@@ -124,6 +133,7 @@ interface Context<TState = any> extends Cancellable, Disposable {
 
 interface CreateOptions {
   key?: any;
+  params?: any;
   repository?: Repository;
 }
 
@@ -137,13 +147,23 @@ interface Disposable {
   dispose(): void;
 }
 
+/**
+ * A promise that can cancel
+ */
 interface CancellablePromise<T> extends Promise<T>, Cancellable {}
 
 interface Factory<T = any> {
   create(repository: Repository, key?: any): T;
 }
 
+/**
+ * The cubiz is where to store the data. The application logic should place in effect body
+ */
 interface Cubiz<TState = any> extends Disposable {
+  /**
+   * the parameters will be passed when creating cubiz
+   */
+  readonly params: any;
   /**
    * get last error
    */
@@ -189,13 +209,7 @@ interface Cubiz<TState = any> extends Disposable {
 }
 
 interface Repository {
-  /**
-   * add resolved value and using factory as key
-   * @param dep
-   * @param resolved
-   * @param key
-   */
-  add<T>(dep: Factory<T>, resolved: T, key?: any): this;
+  cubiz<T>(dep: CubizInit<T>, options?: CreateOptions): this;
   /**
    * add resolved cubiz and using initFn as key
    * @param dep
@@ -203,6 +217,13 @@ interface Repository {
    * @param key
    */
   add<T>(dep: CubizInit<T>, resolved: T, key?: any): this;
+  /**
+   * add resolved value and using factory as key
+   * @param dep
+   * @param resolved
+   * @param key
+   */
+  add<T>(dep: Factory<T>, resolved: T, key?: any): this;
   /**
    * get cubiz that associated with initFn, create new one if not any
    * @param dep
@@ -253,6 +274,10 @@ interface Repository {
 
 function noop() {}
 
+/**
+ * create a emitter
+ * @returns
+ */
 function createEmitter(): Emitter {
   const handlers: Function[] = [];
   return {
@@ -284,8 +309,10 @@ function createEmitterGroup<TKey extends string>(
 ): Record<TKey, Emitter> & { clear(): void } {
   const result: Record<TKey, Emitter> = {} as any;
   const emitters: Emitter[] = [];
+  // create emitters
   names.forEach((name) => {
     const emitter = createEmitter();
+    // save emitter for later use
     emitters.push(emitter);
     result[name] = emitter;
   });
@@ -342,11 +369,65 @@ function createCancellable(
   };
 }
 
+function createStateAccessor<TState>(
+  cubiz: Cubiz<TState>,
+  setState: SetState<TState>,
+  cancellable: Cancellable,
+  modifier: Effect
+): StateAccessor<TState> {
+  const result: StateAccessor<TState> = Object.assign(
+    (arg?: any): any => {
+      // getter
+      if (!arguments.length) {
+        return cubiz.state;
+      }
+
+      // do nothing if context is cancelled
+      if (cancellable.cancelled()) return;
+
+      // reducer
+      if (typeof arg === "function") {
+        setState(arg(cubiz.state), modifier);
+        return;
+      }
+
+      if (arg && typeof arg.mutate === "function") {
+        setState(arg.mutate(cubiz.state), modifier);
+        return;
+      }
+
+      // setter
+      setState(arg, modifier);
+    },
+    {
+      value: cubiz.state,
+      modifier,
+      copyWith(modifier: Effect) {
+        return createStateAccessor(cubiz, setState, cancellable, modifier);
+      },
+    }
+  );
+
+  Object.defineProperty(result, "value", {
+    get: () => cubiz.state,
+    set: (value) => result(value),
+  });
+
+  return result;
+}
+
 function createRepository(): Repository {
   const dependencies = new Map<any, ArrayKeyedMap<any>>();
   const emitters = createEmitterGroup(["change", "dispose", "loading", "call"]);
 
   const repo: Repository = {
+    cubiz<TState>(type: CubizInit<TState>, options?: CreateOptions) {
+      return repo.add(
+        type as any,
+        createCubiz(type, { repository: repo, ...options }),
+        options?.key
+      );
+    },
     emit(event: keyof typeof emitters, payload?: any) {
       (emitters[event] as Emitter).emit(payload);
       return this;
@@ -442,10 +523,14 @@ function createContext<TState>(
   cubiz: Cubiz<TState>,
   effect: Effect,
   allContexts: Context<TState>[],
-  setState: (next: TState) => void,
+  setState: SetState<TState>,
   getData: () => Record<string, any>
 ): Context<TState> {
   const emitters = createEmitterGroup(["dispose", "cancel"]);
+  const cancellable = createCancellable(() => {
+    emitters.cancel.emit();
+  });
+
   let data: Record<string, any> | undefined;
 
   const context: Context<TState> = {
@@ -463,24 +548,7 @@ function createContext<TState>(
         (x) => x !== context && (!predicate || predicate(x))
       );
     },
-    state(arg?: any): any {
-      // getter
-      if (!arguments.length) {
-        return cubiz.state;
-      }
-
-      // do nothing if context is cancelled
-      if (context.cancelled()) return;
-
-      // reducer
-      if (typeof arg === "function") {
-        setState(arg(cubiz.state));
-        return;
-      }
-
-      // setter
-      setState(arg);
-    },
+    state: createStateAccessor(cubiz, setState, cancellable, effect),
     on(events) {
       return addHandlers(emitters, events);
     },
@@ -490,9 +558,7 @@ function createContext<TState>(
     spawn(effect, ...payload) {
       return cubiz.call(effect, ...payload);
     },
-    ...createCancellable(() => {
-      emitters.cancel.emit();
-    }),
+    ...cancellable,
     ...createDisposable(() => {
       emitters.dispose.emit();
     }),
@@ -509,6 +575,9 @@ function callEffect<TState, TPayload extends any[], TResult>(
   onDone: (error?: any) => void = noop,
   onCancel: VoidCallback = noop
 ): any {
+  if (context.effect !== context.state.modifier) {
+    context = { ...context, state: (context.state as any).copyWith(effect) };
+  }
   try {
     const result: any = effect(context, ...payload);
     // async result
@@ -547,7 +616,11 @@ function callEffect<TState, TPayload extends any[], TResult>(
 
 function createCubiz<TState>(
   type: CubizInit<TState>,
-  { key, repository: repository = createRepository() }: CreateOptions = {}
+  {
+    key,
+    repository: repository = createRepository(),
+    params,
+  }: CreateOptions = {}
 ): Cubiz<TState> {
   const emitters = createEmitterGroup(["change", "dispose", "loading", "call"]);
   const allContexts: Context<TState>[] = [];
@@ -557,8 +630,8 @@ function createCubiz<TState>(
   let error: any;
   let loading = false;
 
-  function emitChange() {
-    const e: CubizEventArgs = { cubiz };
+  function emitChange(previous: TState, modifier: Effect) {
+    const e: CubizChangeEventArgs<TState> = { cubiz, modifier, previous };
     emitters.change.emit(e);
     repository.emit("change", e);
   }
@@ -581,10 +654,11 @@ function createCubiz<TState>(
     repository.emit("call", e);
   }
 
-  function setState(next: TState) {
+  function setState(next: TState, modifier: Effect) {
     if (next === state) return;
+    const previous = state;
     state = next;
-    emitChange();
+    emitChange(previous, modifier);
   }
 
   function uploadLoadingStatus() {
@@ -604,6 +678,9 @@ function createCubiz<TState>(
   }
 
   const cubiz: Cubiz<TState> = {
+    get params() {
+      return params;
+    },
     get data() {
       return data;
     },
@@ -666,6 +743,11 @@ function createCubiz<TState>(
 export {
   // types
   VoidCallback,
+  Defer,
+  Factory,
+  CreateOptions,
+  StateAccessor,
+  Disposable,
   Callback,
   Context,
   Cancellable,

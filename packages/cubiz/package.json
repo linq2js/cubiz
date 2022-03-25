@@ -6,7 +6,7 @@
   "repository": {
     "url": "https://github.com/linq2js/cubiz"
   },
-  "homepage": "",
+  "homepage": "https://linq2js.github.io/cubiz/",
   "license": "ISC",
   "main": "dist/tsc/main.js",
   "types": "dist/tsc/main.d.ts",
@@ -18,11 +18,10 @@
     "lib"
   ],
   "scripts": {
-    "prepublishOnly": "yarn test && yarn && yarn build",
+    "prepublishOnly": "npm run docs && yarn test && yarn && yarn build",
     "cli": "ts-node lib/cli.ts",
     "lint": "eslint lib/ --ext .js,.jsx,.ts,.tsx",
     "test": "jest",
-    "test:simple_classes": "npm run clean && yarn cli ./test/simple_classes.yaml dart ./output/simple_classes.dart",
     "clean": "rm -rf dist build package",
     "ts-node": "ts-node",
     "docs": "typedoc --entryPoints lib/main.ts --out ../../docs",

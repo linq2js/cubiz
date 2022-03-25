@@ -53,6 +53,7 @@ const increment = ({ state }) => {
   state(count + 1);
   // can achieve above by using state reducer
   // state((prev) => prev + 1);
+  // state.value++;
 };
 
 const Counter = () => {

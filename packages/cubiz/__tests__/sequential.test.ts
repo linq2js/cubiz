@@ -10,7 +10,8 @@ test("sequential", async () => {
   async function increment({ state, call }: Context<number>) {
     await call(sequential);
     await call(delay, 10);
-    state((prev) => prev + 1);
+    expect(state.modifier).toBe(increment);
+    state.value++;
   }
 
   const cubiz = createCubiz(Cubiz);
