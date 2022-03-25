@@ -26,6 +26,23 @@ interface ContextEvents {
     dispose?: VoidCallback;
     cancel?: VoidCallback;
 }
+interface StateAccessor<TState> {
+    /**
+     * Update state by using reducer.
+     * The reducer retrieves previous state and returns a new one
+     * @param reducer
+     */
+    (reducer: ((prev: TState) => TState)[]): void;
+    /**
+     * get current state
+     */
+    (): TState;
+    /**
+     * update state with new value
+     * @param value
+     */
+    (value: TState): void;
+}
 interface Context<TState = any> extends Cancellable, Disposable {
     /**
      * Get effect info
@@ -45,21 +62,7 @@ interface Context<TState = any> extends Cancellable, Disposable {
      * @param predicate
      */
     findContexts(predicate?: (context: Context<TState>) => boolean): Context<TState>[];
-    /**
-     * get current state
-     */
-    state(): TState;
-    /**
-     * update state with new value
-     * @param value
-     */
-    state(value: TState): void;
-    /**
-     * Update state by using reducer.
-     * The reducer retrieves previous state and returns a new one
-     * @param reducer
-     */
-    state(...reducers: ((prev: TState) => TState)[]): void;
+    state: StateAccessor<TState>;
     /**
      * listen context events
      * @param events
@@ -128,6 +131,10 @@ interface Cubiz<TState = any> extends Disposable {
      * get the key of cubiz, by default, the key is undefined
      */
     readonly key: any;
+    /**
+     * a shared data for effect level use
+     */
+    readonly data: Record<string, any>;
     /**
      * get the cubiz type, it is init function
      */

@@ -179,20 +179,21 @@ function createContext(cubiz, effect, allContexts, setState, getData) {
         findContexts(predicate) {
             return allContexts.filter((x) => x !== context && (!predicate || predicate(x)));
         },
-        state(...args) {
+        state(arg) {
             // getter
-            if (!args.length) {
+            if (!arguments.length) {
                 return cubiz.state;
             }
+            // do nothing if context is cancelled
             if (context.cancelled())
                 return;
             // reducer
-            if (typeof args[0] === "function") {
-                setState(args.reduce((x, reducer) => reducer(x), cubiz.state));
+            if (typeof arg === "function") {
+                setState(arg(cubiz.state));
                 return;
             }
             // setter
-            setState(args[0]);
+            setState(arg);
         },
         on(events) {
             return addHandlers(emitters, events);
@@ -249,6 +250,7 @@ function createCubiz(type, { key, repository: repository = createRepository() } 
     const emitters = createEmitterGroup(["change", "dispose", "loading", "call"]);
     const allContexts = [];
     const effectData = new Map();
+    const data = {};
     let state;
     let error;
     let loading = false;
@@ -294,7 +296,10 @@ function createCubiz(type, { key, repository: repository = createRepository() } 
         }
         return result;
     }
-    const cubiz = Object.assign({ get type() {
+    const cubiz = Object.assign({ get data() {
+            return data;
+        },
+        get type() {
             return type;
         },
         get key() {
