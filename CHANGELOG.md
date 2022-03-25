@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.3.0](https://github.com/linq2js/cubiz/compare/v0.2.4...v0.3.0) (2022-03-25)
+
+
+### Features
+
+* fork,spawn ([048557d](https://github.com/linq2js/cubiz/commit/048557d3d327819b384ec9e00431602d10446a1d))
+
+
+
+
+
 ## [0.2.4](https://github.com/linq2js/cubiz/compare/v0.2.3...v0.2.4) (2022-03-25)
 
 **Note:** Version bump only for package cubiz
