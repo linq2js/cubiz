@@ -15,7 +15,8 @@
     "test": "__tests__"
   },
   "files": [
-    "lib"
+    "lib",
+    "dist/tsc"
   ],
   "scripts": {
     "prepublishOnly": "npm run docs && yarn test && yarn && yarn build",
