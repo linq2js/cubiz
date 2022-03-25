@@ -52,6 +52,10 @@ interface ContextEvents {
   cancel?: VoidCallback;
 }
 
+interface CubizConfigs {
+  autoDispose: boolean;
+}
+
 interface StateAccessor<TState> {
   /**
    * Update state by using reducer.
@@ -129,6 +133,8 @@ interface Context<TState = any> extends Cancellable, Disposable {
    * @param key
    */
   use<T>(type: CubizInit<T>, key?: any): Cubiz<T>;
+
+  configure(configs: Partial<CubizConfigs>): void;
 }
 
 interface CreateOptions {
@@ -206,6 +212,8 @@ interface Cubiz<TState = any> extends Disposable {
     effect: Effect<TState, TPayload, TResult>,
     ...args: TPayload
   ): InferEffectResult<TResult>;
+  bind(binder: any): void;
+  unbind(binder: any): void;
 }
 
 interface Repository {
@@ -523,6 +531,7 @@ function createContext<TState>(
   cubiz: Cubiz<TState>,
   effect: Effect,
   allContexts: Context<TState>[],
+  configure: (configs: Partial<CubizConfigs>, modifier: Effect) => void,
   setState: SetState<TState>,
   getData: () => Record<string, any>
 ): Context<TState> {
@@ -563,6 +572,9 @@ function createContext<TState>(
       emitters.dispose.emit();
     }),
     use: cubiz.repository.get,
+    configure(configs) {
+      configure(configs, effect);
+    },
   };
 
   return context;
@@ -626,9 +638,22 @@ function createCubiz<TState>(
   const allContexts: Context<TState>[] = [];
   const effectData = new Map<Effect, Record<string, any>>();
   const data: Record<string, any> = {};
+  const binders = new Set();
+  const configs: CubizConfigs = {
+    autoDispose: false,
+  };
   let state: TState;
   let error: any;
   let loading = false;
+  let initialized = false;
+  let autoDisposeTimer: any;
+
+  function configure(newConfigs: Partial<CubizConfigs>, modifier: Effect) {
+    if (modifier !== type) {
+      throw new Error("Cannot change cubiz configs outside initFn");
+    }
+    Object.assign(configs, newConfigs);
+  }
 
   function emitChange(previous: TState, modifier: Effect) {
     const e: CubizChangeEventArgs<TState> = { cubiz, modifier, previous };
@@ -706,10 +731,17 @@ function createCubiz<TState>(
       return addHandlers(emitters, events);
     },
     call(effect, ...payload) {
+      if (effect === type) {
+        if (initialized) {
+          throw new Error("initFn cannot call twice for same cubiz");
+        }
+        initialized = true;
+      }
       const context: Context<TState> = createContext(
         cubiz,
         effect as any,
         allContexts,
+        configure,
         setState,
         () => getData(effect)
       );
@@ -730,7 +762,24 @@ function createCubiz<TState>(
 
       return callEffect(context, effect, payload, onDone, context.cancel);
     },
-    ...createDisposable(emitDispose),
+    bind(binder: any) {
+      if (key === null || typeof key === "undefined") {
+        throw new Error("Invalid binding key");
+      }
+      clearTimeout(autoDisposeTimer);
+      binders.add(binder);
+    },
+    unbind(binder: any) {
+      clearTimeout(autoDisposeTimer);
+      binders.delete(binder);
+      if (!binders.size) {
+        autoDisposeTimer = setTimeout(cubiz.dispose);
+      }
+    },
+    ...createDisposable(() => {
+      repository.remove(type, key);
+      emitDispose();
+    }),
   };
 
   // repository events
