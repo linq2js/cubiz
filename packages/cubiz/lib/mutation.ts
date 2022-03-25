@@ -1,7 +1,12 @@
 import { Context } from "./core";
 
-type Reducer<TState> = (prev: TState) => TState;
+type Mutation<TState> = (prev: TState) => TState;
 
+/**
+ * ArrayMutation: push multiple values to the array
+ * @param values
+ * @returns
+ */
 function push<TState>(...values: TState[]) {
   return (prev: TState[]) => {
     if (!values.length) return prev;
@@ -9,6 +14,10 @@ function push<TState>(...values: TState[]) {
   };
 }
 
+/**
+ * ArrayMutation: pop a the last value from the array
+ * @returns
+ */
 function pop<TState>() {
   return (prev: TState[]) => {
     if (!prev?.length) return prev;
@@ -16,6 +25,10 @@ function pop<TState>() {
   };
 }
 
+/**
+ * ArrayMutation: reverse array items order
+ * @returns
+ */
 function reverse<TState>() {
   return (prev: TState[]) => {
     if (!prev?.length) return prev;
@@ -23,6 +36,11 @@ function reverse<TState>() {
   };
 }
 
+/**
+ * ArrayMutation: add multiple values to array at beginning
+ * @param values
+ * @returns
+ */
 function unshift<TState>(...values: TState[]) {
   return (prev: TState[]) => {
     if (!values.length) return prev;
@@ -31,6 +49,10 @@ function unshift<TState>(...values: TState[]) {
   };
 }
 
+/**
+ * ArrayMutation: remove the first item in the array
+ * @returns
+ */
 function shift<TState>() {
   return (prev: TState[]) => {
     if (!prev?.length) return prev;
@@ -38,6 +60,13 @@ function shift<TState>() {
   };
 }
 
+/**
+ * ArrayMutation: remove 'deleteCount' items at 'start' position then insert 'items' to that position
+ * @param start
+ * @param deleteCount
+ * @param items
+ * @returns
+ */
 function splice<TState>(
   start: number,
   deleteCount?: number,
@@ -50,6 +79,12 @@ function splice<TState>(
   };
 }
 
+/**
+ * ArrayMutation: swap two item values of the array
+ * @param from
+ * @param to
+ * @returns
+ */
 function swap<TState>(from: number, to: number) {
   return (prev: TState[]) => {
     if (!prev?.length) return prev;
@@ -64,6 +99,11 @@ function swap<TState>(from: number, to: number) {
   };
 }
 
+/**
+ * ArrayMutation: remove items in the array by its indices
+ * @param indices
+ * @returns
+ */
 function removeAt<TState>(...indices: number[]) {
   return (prev: TState[]) => {
     if (!prev?.length || !indices.length) return prev;
@@ -79,6 +119,11 @@ function removeAt<TState>(...indices: number[]) {
   };
 }
 
+/**
+ * ArrayMutation: remove items that matches predicate
+ * @param predicate
+ * @returns
+ */
 function removeAll<TState>(
   predicate: (value: TState, index: number) => boolean
 ) {
@@ -90,6 +135,11 @@ function removeAll<TState>(
   };
 }
 
+/**
+ * ArrayMutation: remove first item that matches predicate
+ * @param predicate
+ * @returns
+ */
 function removeFirst<TState>(
   predicate: (value: TState, index: number) => boolean
 ) {
@@ -103,6 +153,11 @@ function removeFirst<TState>(
   };
 }
 
+/**
+ * ArrayMutation: exclude all specified values from the array
+ * @param values
+ * @returns
+ */
 function exlcude<TState>(...values: TState[]) {
   return (prev: TState[]) => {
     if (!prev?.length || !values.length) return prev;
@@ -112,6 +167,11 @@ function exlcude<TState>(...values: TState[]) {
   };
 }
 
+/**
+ * ArrayMutation: sort the array
+ * @param compareFn
+ * @returns
+ */
 function sort<TState>(compareFn?: (a: TState, b: TState) => number) {
   return (prev: TState[]) => {
     if (!prev?.length) return prev;
@@ -119,6 +179,11 @@ function sort<TState>(compareFn?: (a: TState, b: TState) => number) {
   };
 }
 
+/**
+ * ArrayMutation: sort the array by selected value
+ * @param selector
+ * @returns
+ */
 function orderBy<TState>(selector: (value: TState) => any) {
   return sort<TState>((a, b) => {
     const av = selector(a);
@@ -127,12 +192,18 @@ function orderBy<TState>(selector: (value: TState) => any) {
   });
 }
 
+/**
+ * ArrayMutation: mutate the array items
+ * @param predicateOrIndex
+ * @param mutations
+ * @returns
+ */
 function item<TState>(
   predicateOrIndex:
     | ((value: TState, index: number) => boolean)
     | number
     | "all",
-  ...reducers: ((prev: TState) => TState)[]
+  ...mutations: Mutation<TState>[]
 ) {
   return (prev: TState[]) => {
     if (!prev?.length) return prev;
@@ -146,7 +217,7 @@ function item<TState>(
     if (predicate) {
       const next = prev.map((value, index) => {
         if (predicate(value, index)) {
-          const changed = reducers.reduce((v, reducer) => reducer(v), value);
+          const changed = mutations.reduce((v, mutation) => mutation(v), value);
           if (changed !== value) {
             hasChange = true;
             return changed;
@@ -160,7 +231,7 @@ function item<TState>(
     if (index < 0 || index >= prev.length) {
       return prev;
     }
-    const changed = reducers.reduce((v, reducer) => reducer(v), prev[index]);
+    const changed = mutations.reduce((v, reducer) => reducer(v), prev[index]);
     if (changed === prev[index]) {
       return prev;
     }
@@ -170,6 +241,12 @@ function item<TState>(
   };
 }
 
+/**
+ * ObjectMutation: set object prop to new value
+ * @param key
+ * @param value
+ * @returns
+ */
 function set<TState, TKey extends keyof TState>(
   key: TKey,
   value: TState[TKey]
@@ -183,6 +260,11 @@ function set<TState, TKey extends keyof TState>(
   };
 }
 
+/**
+ * ObjectMutation: remove object props
+ * @param keys
+ * @returns
+ */
 function unset<TState, TKey extends keyof TState>(...keys: TKey[]) {
   return (prev: TState | undefined): TState => {
     if (!prev) return prev as TState;
@@ -199,13 +281,19 @@ function unset<TState, TKey extends keyof TState>(...keys: TKey[]) {
   };
 }
 
+/**
+ * ObjectMutation: mutate prop of the object with specified mutations
+ * @param key
+ * @param mutations
+ * @returns
+ */
 function prop<TState, TKey extends keyof TState>(
   key: TKey,
-  ...reducers: Reducer<TState[TKey]>[]
+  ...mutations: Mutation<TState[TKey]>[]
 ) {
   return (prev: TState | undefined): TState => {
     const p = prev?.[key];
-    const n: any = reducers.reduce((v, r) => r(v), p as any);
+    const n: any = mutations.reduce((v, r) => r(v), p as any);
     if (n === p) return prev as TState;
     const next: any = { ...prev };
     next[key] = n;
@@ -213,6 +301,11 @@ function prop<TState, TKey extends keyof TState>(
   };
 }
 
+/**
+ * mutate state with specified mutations
+ * @param context
+ * @param mutations
+ */
 function mutate<TState>(
   context: Context<TState>,
   ...mutations: ((prev: TState) => TState)[]
@@ -220,10 +313,19 @@ function mutate<TState>(
   context.state(mutations.reduce((v, r) => r(v), context.state.value));
 }
 
+/**
+ * ValueMutation: toggle the boolean value
+ * @returns
+ */
 function toggle() {
   return (prev: boolean) => !prev;
 }
 
+/**
+ * ValueMutation: add durations to the date value
+ * @param value
+ * @returns
+ */
 function add(
   value: Record<"D" | "M" | "Y" | "W" | "h" | "m" | "s" | "ms" | "D", number>
 ) {
