@@ -77,6 +77,8 @@ interface StateAccessor<TState> {
 }
 
 interface Context<TState = any> extends Cancellable, Disposable {
+  readonly key: any;
+  readonly params: any;
   /**
    * Get effect info
    */
@@ -556,6 +558,12 @@ function createContext<TState>(
   let data: Record<string, any> | undefined;
 
   const context: Context<TState> = {
+    get key() {
+      return cubiz.key;
+    },
+    get params() {
+      return cubiz.params;
+    },
     get effect() {
       return effect;
     },
@@ -740,6 +748,8 @@ function createCubiz<TState>(
     emitCall(effect as any, payload);
     if (mode === "spawn") {
       // the cubiz will not track loading status of spawned effect
+      // but it must be cancelled if the cubiz is disposed
+      emitters.dispose.add(context.cancel);
     } else {
       // the top is the latest
       allContexts.unshift(context);

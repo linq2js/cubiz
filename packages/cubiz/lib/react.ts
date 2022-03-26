@@ -33,6 +33,8 @@ interface UseCubiz extends Function {
     selector: (state: TState) => TResult
   ): [TResult, Cubiz<TState>];
 
+  <TState>(initFn: CubizInit<TState>, track: boolean): Cubiz<TState>;
+
   /**
    * return cubiz object that matches the initFn. when the cubiz's state changed, the component will re-render as well
    */
@@ -46,7 +48,13 @@ const respositoryContext = React.createContext<Repository | null>(null);
  * @returns
  */
 function useRepository() {
-  return React.useContext(respositoryContext)!;
+  const repo = React.useContext(respositoryContext);
+  if (!repo) {
+    throw new Error(
+      "No repository found. Must wrap this component by Provider component"
+    );
+  }
+  return repo;
 }
 
 /**
@@ -57,12 +65,17 @@ function useRepository() {
  */
 const useCubiz: UseCubiz = (...args: any[]): any => {
   const initFn: CubizInit = args[0];
-  const binder = React.useRef({}).current;
-  const unmountRef = React.useRef(false);
   const selector: Function | undefined =
     typeof args[1] === "function" ? args[1] : undefined;
   const options: UseCubizOptions | undefined =
-    typeof args[1] === "function" ? undefined : args[1];
+    // useCubiz(cubiz, selector)
+    typeof args[1] === "function"
+      ? undefined
+      : // useCubiz(cubiz, track)
+      typeof args[1] === "boolean"
+      ? { track: args[1] }
+      : // useCubiz(cubiz, options)
+        args[1];
   // extract main options
   const { key, track = {} } = options ?? {};
   // extract tracking options
@@ -70,7 +83,8 @@ const useCubiz: UseCubiz = (...args: any[]): any => {
     typeof track === "boolean"
       ? { loading: false, change: false }
       : track ?? {};
-
+  const binder = React.useRef({}).current;
+  const unmountRef = React.useRef(false);
   const repository = useRepository();
   const rerender = React.useState<any>()[1];
   const cubiz = repository?.get(initFn, key);
