@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.4.0](https://github.com/linq2js/cubiz/compare/v0.3.2...v0.4.0) (2022-03-26)
+
+
+### Features
+
+* mapping effect ([47ade3b](https://github.com/linq2js/cubiz/commit/47ade3b2cc333405545dad283af3b24ed8ac9447))
+
+
+
+
+
 ## [0.3.2](https://github.com/linq2js/cubiz/compare/v0.3.1...v0.3.2) (2022-03-26)
 
 **Note:** Version bump only for package cubiz
