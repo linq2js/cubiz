@@ -453,7 +453,7 @@ function createRepository(): Repository {
     },
     emit(event: keyof typeof emitters, payload?: any) {
       (emitters[event] as Emitter).emit(payload);
-      return this;
+      return repo;
     },
     on(events) {
       return addHandlers(emitters, events);
@@ -465,7 +465,7 @@ function createRepository(): Repository {
         dependencies.set(dependency, group);
       }
       group.set(key, resolved);
-      return this;
+      return repo;
     },
     remove(dependency, key) {
       const group = dependencies.get(dependency);
@@ -480,11 +480,11 @@ function createRepository(): Repository {
       // is cubiz initFn
       if (typeof dependency === "function") {
         /* eslint-disable @typescript-eslint/no-use-before-define */
-        resolved = createCubiz(dependency, { repository: this, key });
+        resolved = createCubiz(dependency, { repository: repo, key });
         repo.add(dependency as CubizInit, resolved, key);
       } else {
         // is factory
-        resolved = dependency.create(this, key);
+        resolved = dependency.create(repo, key);
         repo.add(dependency, resolved, key);
       }
 
@@ -494,7 +494,7 @@ function createRepository(): Repository {
       dependencies.forEach(
         (group, key) => (!filter || filter(key)) && group.each(callback)
       );
-      return this;
+      return repo;
     },
     call(effects) {
       const e = Array.isArray(effects) ? effects : [effects];
@@ -507,7 +507,7 @@ function createRepository(): Repository {
         (x: any) => typeof x === "function"
       );
 
-      return this;
+      return repo;
     },
   };
 
@@ -652,11 +652,7 @@ function callEffect<TState, TPayload extends any[], TResult>(
 
 function createCubiz<TState>(
   type: CubizInit<TState>,
-  {
-    key,
-    repository: repository = createRepository(),
-    params,
-  }: CreateOptions = {}
+  { key, repository = createRepository(), params }: CreateOptions = {}
 ): Cubiz<TState> {
   const emitters = createEmitterGroup(["change", "dispose", "loading", "call"]);
   const allContexts: Context<TState>[] = [];

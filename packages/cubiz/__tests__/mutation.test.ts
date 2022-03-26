@@ -178,7 +178,6 @@ test("swap() #1", () => {
 test("swap() #2", () => {
   const initial = [1, 2, 2, 4];
   const cubiz = utils.genericCubiz(initial);
-
   cubiz.call((x) => x.call(mutate, swap(1, 2)));
 
   expect(cubiz.state).toBe(initial);

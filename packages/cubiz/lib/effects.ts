@@ -9,6 +9,8 @@ import {
   createEmitter,
   Cubiz,
   CubizChangeEventArgs,
+  CubizInit,
+  Emitter,
 } from "./core";
 
 type InferAwaitable<TAwaitable> = TAwaitable extends Promise<infer TResolved>
@@ -293,6 +295,77 @@ const sequential: SequentialEffect = ({ effect, findContexts }) => {
   return defer.promise;
 };
 
+type MappingEffect<
+  TResult extends {} = {},
+  TCubiz extends {} = {}
+> = TResult & {
+  add<TName extends string, TValue>(
+    name: TName,
+    source: Cubiz<TValue> | CubizInit<TValue>
+  ): MappingEffect<
+    TResult & { readonly [key in TName]: TValue },
+    TCubiz & { readonly [key in TName]: Cubiz<TValue> }
+  >;
+  map<TState>(
+    mapper: (result: TResult, cubizes: TCubiz) => TState
+  ): (context: Context<TState>) => void;
+};
+
+const mapping = (): MappingEffect => {
+  const resolvers: ((
+    context: Context,
+    callback: Function,
+    onCleanup: Emitter,
+    result: any,
+    cubizes: any
+  ) => any)[] = [];
+  return {
+    add(prop, source): any {
+      resolvers.push((context, callback, onCleanup, result, cubizes) => {
+        const cubiz =
+          typeof source === "function" ? context.use(source) : source;
+        cubizes[prop] = cubiz;
+        result[prop] = cubiz.state;
+        // clean up event listener
+        onCleanup.add(
+          cubiz.on({
+            change: () => {
+              result[prop] = cubiz.state;
+              callback();
+            },
+          })
+        );
+        context.on({ dispose: onCleanup.emit });
+      });
+      return this;
+    },
+    map(mapper) {
+      return ({ spawn }) => {
+        const onCleanup = createEmitter();
+        const cancellable = createCancellable(onCleanup.emit);
+        // spawn new context to avoid blocking current context
+        spawn((context) => {
+          const defer = createDefer();
+          const result = {};
+          const cubizes: Record<string, Cubiz> = {};
+          const handleChange = () => context.state(mapper(result, cubizes));
+          resolvers.forEach((x) =>
+            x(context, handleChange, onCleanup, result, cubizes)
+          );
+          const loading = Object.keys(cubizes).some(
+            (key) => cubizes[key].loading
+          );
+          // all state are ready
+          if (!loading) handleChange();
+          // run forever
+          return defer.promise;
+        });
+        return cancellable;
+      };
+    },
+  };
+};
+
 export {
   // types
   DelayEffect,
@@ -305,6 +378,7 @@ export {
   AllSettledEffect,
   DroppableEffect,
   SequentialEffect,
+  MappingEffect,
   // methods
   delay,
   debounce,
@@ -316,4 +390,5 @@ export {
   allSettled,
   droppable,
   sequential,
+  mapping,
 };

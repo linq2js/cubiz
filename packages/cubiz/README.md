@@ -192,7 +192,15 @@ function removeTodo({ state, call }, id) {
   state((todos) => todos.filter((x) => x.id !== id)); // in case of no todo found, the state is still created
   call(
     mutate,
-    removeAll((x) => x.id === id)
+    removeAll((x) => x.id === id),
+    // mutate item that matches predicate
+    item((x) => x.id === id, prop("done", toggle())),
+    // mutate item at specified position
+    item(1, prop("title", "new title")),
+    item("first", prop("title", "new title")),
+    item("last", prop("title", "new title"))
+    // mutate all items
+    item('all', prop("title", "new title"))
   ); // the state will keep it as is if no todo found
 }
 ```
