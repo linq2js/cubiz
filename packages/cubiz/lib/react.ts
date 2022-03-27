@@ -42,6 +42,7 @@ interface UseCubiz extends Function {
 }
 
 const respositoryContext = React.createContext<Repository | null>(null);
+const defaultRepository = createRepository();
 
 /**
  * get current respository that provided by Provider component
@@ -49,12 +50,7 @@ const respositoryContext = React.createContext<Repository | null>(null);
  */
 function useRepository() {
   const repo = React.useContext(respositoryContext);
-  if (!repo) {
-    throw new Error(
-      "No repository found. Must wrap this component by Provider component"
-    );
-  }
-  return repo;
+  return repo ?? defaultRepository;
 }
 
 /**

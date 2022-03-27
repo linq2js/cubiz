@@ -237,8 +237,12 @@ const when: WhenEffect = ({ on, cubiz }, callbackOrEffects, target?): any => {
   const listener = (e: CubizCallEventArgs) => {
     cb(e, cancellable);
   };
-  if (!target) target = cubiz;
-  onCleanup.add(target.on({ call: listener }));
+  if (target) {
+    onCleanup.add(target.on({ call: listener }));
+  } else {
+    // by default, effect can listen effect calls of all cubizes
+    onCleanup.add(cubiz.repository.on({ call: listener }));
+  }
   onCleanup.add(on({ dispose: cancellable.cancel }));
 
   return defer.promise;
@@ -307,7 +311,11 @@ type MappingEffect<
     TCubiz & { readonly [key in TName]: Cubiz<TValue> }
   >;
   map<TState>(
-    mapper: (result: TResult, cubizes: TCubiz) => TState
+    mapper: (
+      result: TResult,
+      cubizes: TCubiz,
+      context: Context<TState>
+    ) => TState
   ): (context: Context<TState>) => void;
 };
 
@@ -348,7 +356,8 @@ const mapping = (): MappingEffect => {
           const defer = createDefer();
           const result = {};
           const cubizes: Record<string, Cubiz> = {};
-          const handleChange = () => context.state(mapper(result, cubizes));
+          const handleChange = () =>
+            context.state(mapper(result, cubizes, context));
           resolvers.forEach((x) =>
             x(context, handleChange, onCleanup, result, cubizes)
           );

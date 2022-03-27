@@ -38,51 +38,19 @@ yarn add cubiz
 ### Basic Usages
 
 ```js
-import { useCubiz, Provider } from "cubiz";
+import { useCubiz } from "cubiz";
 
-// define init function of the cubiz
-const CounterCubiz = ({ state }) => {
-  // set initial state of CounterCubiz
-  state(1);
-};
-
-// define cubiz effect,the effect perform increasing state value by 1
-const increment = ({ state }) => {
-  // get current state
-  const count = state();
-  // update state
-  state(count + 1);
-  // can achieve above by using state reducer
-  // state((prev) => prev + 1);
-  // state.value++;
-};
-
-const Counter = () => {
-  // get cubiz instance from the provider,
-  // the cubiz will be created by calling init function
-  const { state, call } = useCubiz(CounterCubiz);
-
-  function handleClick() {
-    // call cubiz effect
-    call(increment);
-  }
-
-  return (
-    <>
-      {/* show state value */}
-      <h1>Count: {state}</h1>
-      <button onClick={handleClick}>Increment</button>
-    </>
-  );
-};
+// define a cubiz with initial state is 1
+const CounterCubiz = ({ state }) => state(1);
+// update cubiz state
+const IncrementAction = ({ state }) => state((prev) => prev + 1);
 
 const App = () => {
-  return (
-    // wrap a application inside provider
-    <Provider>
-      <Counter />
-    </Provider>
-  );
+  // retrieve cubiz object and destruct state, call props
+  const { state, call } = useCubiz(CounterCubiz);
+  // call an action
+  const increment = () => call(IncrementAction);
+  return <button onClick={increment}>Count: {state}</button>;
 };
 ```
 
